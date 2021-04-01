@@ -48,12 +48,17 @@ def userCreate(request):
 
     if serializer.is_valid():
         serializer.save()
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED
+        )
+    else:
+        return Response(
+            {'detail': 'Something wrong with validation'},
+            status=status.HTTP_406_NOT_ACCEPTABLE
+        )
 
-    return Response(
-        serializer.id,
-        serializer.data,
-        status=status.HTTP_201_CREATED
-    )
+
 
 
 @api_view(['POST'])
