@@ -1,5 +1,7 @@
+from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 from rest_framework.decorators import api_view
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser
@@ -15,8 +17,10 @@ import json
 def apiOverview(request):
     api_urls = {
         'List': '/user-list/',
-        'Detail': 'user-detail<str:pk>',
-        'Create': '/task-create',
+        'Detail': 'user-detail<str:username>',
+        'Create': '/user-create',
+        'Delete': '/user-delete',
+        'Login': '/user-login',
     }
 
     return Response(api_urls)
@@ -58,8 +62,39 @@ def userCreate(request):
             status=status.HTTP_406_NOT_ACCEPTABLE
         )
 
+@api_view(['POST'])
+def userDelete(request):
+    data = json.loads(request.body)
+    username = data.get('username')
+    password = data.get('password')
 
+    if username is None or password is None:
+        return Response(
+            {'detail': 'Provide username and password'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
+    try:
+        user = User.objects.get(username=username)
+        if user.password != password:
+            user = None
+        # user = authenticate(username=username, password=password)
+
+        if user is None:
+            return Response(
+                {'detail': 'Invalid credentials'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.delete()
+        return Response(
+            {'detail': 'deleted'},
+            status=status.HTTP_200_OK
+        )
+    except ObjectDoesNotExist:
+        return Response(
+            {'detail': 'Invalid credentials'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 @api_view(['POST'])
 def userLogin(request):
@@ -73,18 +108,25 @@ def userLogin(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    user = User.objects.get(username=username)
-    if user.password != password:
-        user = None
-    # user = authenticate(username=username, password=password)
+    try :
+        user = User.objects.get(username=username)
+        if user.password != password:
+            user = None
+        # user = authenticate(username=username, password=password)
 
-    if user is None:
+        if user is None:
+            return Response(
+                {'detail': 'Invalid credentials'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {'username': username},
+            status=status.HTTP_200_OK
+        )
+    except ObjectDoesNotExist:
         return Response(
             {'detail': 'Invalid credentials'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    return Response(
-        {'username': username},
-        status=status.HTTP_200_OK
-    )
